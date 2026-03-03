@@ -4,9 +4,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────
 const FREE_LIMIT = 20;
-const PAYMENT_URL = "https://tbank.ru/cf/9VHVXpx00eg"; // замени на свою ссылку оплаты
+const PAYMENT_URL = "https://tbank.ru/cf/9VHVXpx00eg";
 
-const SYSTEM_PROMPT = `Ты — Мира,женщина - психолог с 15-летним опытом, работаешь в подходе КПТ (когнитивно-поведенческая терапия). Общаешься как близкий друг с большим опытом — тепло, просто, без дистанции и без психологического жаргона.
+const SYSTEM_PROMPT = `Ты — Мира, психолог-женщина с 15-летним опытом, работаешь в подходе КПТ (когнитивно-поведенческая терапия). Общаешься как близкая подруга с большим опытом — тепло, просто, без дистанции и без психологического жаргона. Ты женщина — всегда говори о себе в женском роде: "поняла", "увидела", "почувствовала", "рада".
 
 СТРОГОЕ ПРАВИЛО: задавай только ОДИН вопрос за раз. Никогда не задавай два вопроса подряд.
 
@@ -36,6 +36,16 @@ const SUMMARY_PROMPT = `Ты — Мира, психолог КПТ, женщин
 3. Одно предложение-приглашение продолжить — тепло, без давления
 
 Пиши коротко, живо, в женском роде. Никаких выводов и готовых ответов — только ощущение что самое важное впереди.`;
+
+const FINAL_PROMPT = `Ты — Мира, психолог КПТ, женщина. Наша сессия завершается. Напиши итоговое сообщение прямо в чат — тепло, конкретно, как финал хорошей встречи. Говори о себе только в женском роде: "рада", "увидела", "почувствовала".
+
+Напиши живым текстом без markdown заголовков, не более 180 слов:
+1. 1-2 предложения — что мы разобрали сегодня, с конкретными деталями из разговора
+2. Конкретные шаги — что сделать в первую очередь (2-3 пункта, коротко и практично, каждый с новой строки начиная с •)
+3. Одно предложение — что понаблюдать за собой до следующей встречи
+4. Тёплое завершение — скажи что будешь рада видеть снова когда понадобится
+
+Пиши живо, лично, без психологического жаргона.`;
 
 const STARTERS = [
   "Я чувствую тревогу и не понимаю почему",
@@ -394,6 +404,7 @@ export default function App() {
   const endRef = useRef(null);
   const recRef = useRef(null);
   const msgCountRef = useRef(0); // tracks totalUserMsgs reliably across async calls
+  const endSessionRef = useRef(null);
 
   const sess         = sessions.find(function(s){ return s.id === activeId; });
   const display      = isListening ? transcript : input;
@@ -412,7 +423,7 @@ export default function App() {
     if (paid && timerSec > 0) {
       timerRef.current = setInterval(function() {
         setTimerSec(function(s) {
-          if (s <= 1) { clearInterval(timerRef.current); setPaid(false); return 0; }
+          if (s <= 1) { clearInterval(timerRef.current); setTimeout(endSession, 50); return 0; }
           return s - 1;
         });
       }, 1000);
@@ -424,6 +435,31 @@ export default function App() {
     setShowPaywall(false);
     setPaid(true);
     setTimerSec(SESSION_DURATION);
+  }
+
+  async function endSession() {
+    var sid = activeId;
+    setPaid(false);
+    setSessions(function(p) {
+      var found = p.find(function(s){ return s.id === sid; });
+      if (!found || found.messages.length < 2) return p;
+      var msgs = found.messages.slice(-12);
+      var content = "Вот наш разговор:\n\n" + msgs.map(function(m){
+        return (m.role==="user" ? "Человек: " : "Мира: ") + m.content;
+      }).join("\n\n") + "\n\nНапиши итоговое сообщение сессии.";
+      setLoading(true);
+      callAPI(FINAL_PROMPT, [{ role:"user", content: content }], 400).then(function(reply) {
+        if (reply) {
+          setSessions(function(p2){ return p2.map(function(x){
+            return x.id === sid ? Object.assign({}, x, {
+              messages: x.messages.concat([{ role:"assistant", content: reply, ts: Date.now() }])
+            }) : x;
+          }); });
+        }
+        setLoading(false);
+      }).catch(function(){ setLoading(false); });
+      return p;
+    });
   }
 
   function goHome() {
@@ -595,9 +631,15 @@ export default function App() {
                 </button>
               )}
               {paid && (
-                <div style={{ display:"flex", alignItems:"center", gap:5, background:"#f0faf0", border:"1px solid #a8d8a8", borderRadius:8, padding:"4px 10px" }}>
-                  <span style={{ fontSize:11 }}>⏱</span>
-                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color: timerSec < 600 ? "#c0603a" : timerSec < 1800 ? "#b07830" : "#4a8a4a", fontVariantNumeric:"tabular-nums" }}>{fmtTimer(timerSec)}</span>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:5, background:"#f0faf0", border:"1px solid #a8d8a8", borderRadius:8, padding:"4px 10px" }}>
+                    <span style={{ fontSize:11 }}>⏱</span>
+                    <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color: timerSec < 600 ? "#c0603a" : timerSec < 1800 ? "#b07830" : "#4a8a4a", fontVariantNumeric:"tabular-nums" }}>{fmtTimer(timerSec)}</span>
+                  </div>
+                  <button onClick={endSession}
+                    style={{ background:"none", border:"1px solid #d4c4b0", borderRadius:7, padding:"5px 10px", fontSize:11, color:"#6b4f3a" }}>
+                    Завершить
+                  </button>
                 </div>
               )}
             </>
@@ -693,6 +735,8 @@ export default function App() {
                   { i:"🔒", t:"Полная анонимность", d:"Без регистрации и личных данных. Никто не узнает о вашем разговоре" },
                   { i:"💬", t:"Без осуждения", d:"Никакого взгляда в глаза. Говори о чём угодно — Мира не осудит" },
                   { i:"💰", t:"В 3–8 раз дешевле", d:"990 ₽ за час вместо 3000–8000 ₽ у живого психолога" },
+                  { i:"🎙️", t:"Общение голосом", d:"Говори — не пиши. Мира слышит тебя через микрофон" },
+                  { i:"🌐", t:"Без VPN", d:"Работает в России без ограничений" },
                 ].map(function(x){ return (
                   <div key={x.t} style={{ background:C.white, borderRadius:14, padding:"18px 16px", border:"1px solid #e8ddd2", display:"flex", gap:12, alignItems:"flex-start" }}>
                     <div style={{ fontSize:26, flexShrink:0, marginTop:2 }}>{x.i}</div>
