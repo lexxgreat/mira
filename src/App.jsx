@@ -89,7 +89,7 @@ const fmtTimer = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60
 const SESSION_DURATION = 60 * 60;
 
 // ─────────────────────────────────────────────────────────────
-// API helper — goes through our secure backend /api/chat
+// API helper
 // ─────────────────────────────────────────────────────────────
 async function callAPI(system, messages, maxTokens) {
   const res = await fetch("/api/chat", {
@@ -315,7 +315,7 @@ function ReviewsSection({ reviews }) {
         {reviews.length} отзывов · средняя оценка ⭐ 5.0
       </p>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))", gap:12, marginBottom:16 }}>
-        {visible.map(function(r, i) {
+        {visible.map(function(r) {
           return (
             <div key={r.id} style={{ background:C.white, borderRadius:14, padding:"16px 18px", border:"1px solid #ece3d8", boxShadow:"0 2px 8px rgba(0,0,0,.04)" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
@@ -382,8 +382,18 @@ function DonateModal({ onClose }) {
 // Main App
 // ─────────────────────────────────────────────────────────────
 export default function App() {
-  const [sessions,       setSessions]       = useState([]);
-  const [activeId,       setActiveId]       = useState(null);
+  // ── Инициализация sessions и activeId из localStorage ──
+  const [sessions, setSessions] = useState(function() {
+    try {
+      var saved = localStorage.getItem("mira_sessions");
+      return saved ? JSON.parse(saved) : [];
+    } catch(e) { return []; }
+  });
+
+  const [activeId, setActiveId] = useState(function() {
+    try { return localStorage.getItem("mira_active_id") || null; } catch(e) { return null; }
+  });
+
   const [input,          setInput]          = useState("");
   const [homeInput,      setHomeInput]      = useState("");
   const [loading,        setLoading]        = useState(false);
@@ -395,7 +405,9 @@ export default function App() {
   const [paid,           setPaid]           = useState(false);
   const [timerSec,       setTimerSec]       = useState(SESSION_DURATION);
   const timerRef = useRef(null);
-  const [totalUserMsgs,  setTotalUserMsgs]  = useState(0);
+  const [totalUserMsgs,  setTotalUserMsgs]  = useState(function() {
+    try { return parseInt(localStorage.getItem("mira_msg_count") || "0", 10); } catch(e) { return 0; }
+  });
   const [showPaywall,    setShowPaywall]    = useState(false);
   const [paywallSummary, setPaywallSummary] = useState(null);
   const [showReview,     setShowReview]     = useState(false);
@@ -403,13 +415,30 @@ export default function App() {
 
   const endRef = useRef(null);
   const recRef = useRef(null);
-  const msgCountRef = useRef(0); // tracks totalUserMsgs reliably across async calls
-  const endSessionRef = useRef(null);
+  const msgCountRef = useRef(totalUserMsgs);
 
   const sess         = sessions.find(function(s){ return s.id === activeId; });
   const display      = isListening ? transcript : input;
   const hasText      = display.trim();
   const isLimitReached = !paid && totalUserMsgs >= FREE_LIMIT;
+
+  // ── Сохранение sessions в localStorage ──
+  useEffect(function() {
+    try { localStorage.setItem("mira_sessions", JSON.stringify(sessions)); } catch(e) {}
+  }, [sessions]);
+
+  // ── Сохранение activeId в localStorage ──
+  useEffect(function() {
+    try {
+      if (activeId) { localStorage.setItem("mira_active_id", activeId); }
+      else { localStorage.removeItem("mira_active_id"); }
+    } catch(e) {}
+  }, [activeId]);
+
+  // ── Сохранение счётчика сообщений ──
+  useEffect(function() {
+    try { localStorage.setItem("mira_msg_count", String(totalUserMsgs)); } catch(e) {}
+  }, [totalUserMsgs]);
 
   useEffect(function(){ endRef.current && endRef.current.scrollIntoView({ behavior:"smooth" }); }, [sess && sess.messages, loading]);
 
@@ -440,13 +469,20 @@ export default function App() {
   async function endSession() {
     var sid = activeId;
     setPaid(false);
+    clearInterval(timerRef.current);
+
     setSessions(function(p) {
       var found = p.find(function(s){ return s.id === sid; });
       if (!found || found.messages.length < 2) return p;
-      var msgs = found.messages.slice(-12);
-      var content = "Вот наш разговор:\n\n" + msgs.map(function(m){
-        return (m.role==="user" ? "Человек: " : "Мира: ") + m.content;
+
+      // Берём весь диалог для итогового саммари
+      var allMsgs = found.messages.filter(function(m){
+        return m.role === "user" || m.role === "assistant";
+      });
+      var content = "Вот наш разговор:\n\n" + allMsgs.map(function(m){
+        return (m.role === "user" ? "Человек: " : "Мира: ") + m.content;
       }).join("\n\n") + "\n\nНапиши итоговое сообщение сессии.";
+
       setLoading(true);
       callAPI(FINAL_PROMPT, [{ role:"user", content: content }], 400).then(function(reply) {
         if (reply) {
@@ -458,6 +494,7 @@ export default function App() {
         }
         setLoading(false);
       }).catch(function(){ setLoading(false); });
+
       return p;
     });
   }
@@ -467,7 +504,7 @@ export default function App() {
       setSessions(function(p){ return p.map(function(x){ return x.id === activeId ? Object.assign({}, x, { reviewShown: true }) : x; }); });
       setTimeout(function(){ setShowReview(true); }, 500);
     }
-    setPage("home"); // просто скрываем чат, сессия остаётся
+    setPage("home");
   }
 
   const startListen = useCallback(function() {
@@ -486,7 +523,6 @@ export default function App() {
       setTranscript(t); setInput(t);
     };
     r.onend = function(){
-      // restart if still listening (continuous mode)
       if (recRef.current) { try { recRef.current.start(); } catch(e) {} }
     };
     r.onerror = function(e){ if (e.error !== "no-speech") { setIsListening(false); recRef.current = null; } };
@@ -495,7 +531,7 @@ export default function App() {
 
   const stopListen = useCallback(function(){
     var r = recRef.current;
-    recRef.current = null; // clear first to prevent auto-restart in onend
+    recRef.current = null;
     if (r) { try { r.stop(); } catch(e) {} }
     setIsListening(false);
   }, []);
@@ -570,15 +606,19 @@ export default function App() {
       if (willHitLimit) {
         setPaywallSummary(null);
         setTimeout(function(){ setShowPaywall(true); }, 700);
-        // Pass full conversation for accurate personal summary
-var summaryText = "Вот наш разговор:\n\n" + finalMsgs.filter(function(m){
-  return m.role === "user" || m.role === "assistant";
-}).slice(-10).map(function(m){
-  return (m.role === "user" ? "Человек: " : "Мира: ") + m.content;
-}).join("\n\n") + "\n\nНапиши саммари.";        var summaryTimeout = setTimeout(function(){
+
+        // Весь диалог для саммари
+        var summaryMsgs = finalMsgs.filter(function(m){ return m.role === "user" || m.role === "assistant"; });
+        var summaryText = "Вот наш разговор:\n\n" + summaryMsgs.map(function(m){
+          return (m.role === "user" ? "Человек: " : "Мира: ") + m.content;
+        }).join("\n\n") + "\n\nНапиши саммари.";
+
+        var summaryTimeout = setTimeout(function(){
           setPaywallSummary("Я увидела в нашем разговоре кое-что важное — и хочу разобраться с тобой глубже. Чтобы дойти до сути, нужно больше времени. Час работы со мной стоит 990 рублей — и это реальный шаг к изменениям.");
         }, 10000);
-callAPI(SUMMARY_PROMPT, [{ role:"user", content: summaryText }], 250).then(function(summary){          clearTimeout(summaryTimeout);
+
+        callAPI(SUMMARY_PROMPT, [{ role:"user", content: summaryText }], 250).then(function(summary){
+          clearTimeout(summaryTimeout);
           if (summary) setPaywallSummary(summary);
         }).catch(function(){
           clearTimeout(summaryTimeout);
@@ -626,19 +666,21 @@ callAPI(SUMMARY_PROMPT, [{ role:"user", content: summaryText }], 250).then(funct
                 📋 Сессии
                 {sessions.length > 0 && <span style={{ background:C.brown, color:"#fff", borderRadius:9, padding:"1px 5px", fontSize:10 }}>{sessions.length}</span>}
               </button>
-           {!paid && (
-  <button onClick={function(){ setShowPaywall(true); }}
-    style={{
-      background: isLimitReached ? C.brown : "none",
-      color: isLimitReached ? "#fff" : C.brownDark,
-      border: isLimitReached ? "none" : "1px solid #e2c9a8",
-      borderRadius:7, padding:"5px 11px", fontSize:11,
-      boxShadow: isLimitReached ? "0 2px 8px rgba(139,99,71,.3)" : "none"
-    }}>
-    {isLimitReached ? "✨ Продолжить за 990 ₽" : `💬 ${Math.max(0, FREE_LIMIT - totalUserMsgs)}/${FREE_LIMIT}`}
-  </button>
-)}
+
+              {/* Кнопка оплаты — всегда видна на странице чата */}
+              {!paid && (
+                <button onClick={function(){ setShowPaywall(true); }}
+                  style={{
+                    background: isLimitReached ? C.brown : "none",
+                    color: isLimitReached ? "#fff" : C.brownDark,
+                    border: isLimitReached ? "none" : "1px solid #e2c9a8",
+                    borderRadius:7, padding:"5px 11px", fontSize:11,
+                    boxShadow: isLimitReached ? "0 2px 8px rgba(139,99,71,.3)" : "none"
+                  }}>
+                  {isLimitReached ? "✨ Продолжить за 990 ₽" : `💬 ${Math.max(0, FREE_LIMIT - totalUserMsgs)}/${FREE_LIMIT}`}
+                </button>
               )}
+
               {paid && (
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:5, background:"#f0faf0", border:"1px solid #a8d8a8", borderRadius:8, padding:"4px 10px" }}>
@@ -770,7 +812,7 @@ callAPI(SUMMARY_PROMPT, [{ role:"user", content: summaryText }], 250).then(funct
                   { param:"Цена",             mira:"990 ₽ / час",               real:"3000–8000 ₽ / сессия" },
                   { param:"Анонимность",      mira:"Полная, без данных",        real:"Имя, телефон, история" },
                   { param:"Осуждение",        mira:"Никогда",                   real:"Зависит от специалиста" },
-                  { param:"Первый шаг",       mira:"20 сообщений бесплатно",    real:"Сразу платить" },
+                  { param:"Первый шаг",       mira:"5 сообщений бесплатно",     real:"Сразу платить" },
                 ].map(function(row, i){ return (
                   <div key={row.param} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderBottom: i < 5 ? "1px solid #f0e8e0" : "none" }}>
                     <div style={{ padding:"13px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.muted, background:"#faf7f4", borderRight:"1px solid #f0e8e0", display:"flex", alignItems:"center" }}>{row.param}</div>
