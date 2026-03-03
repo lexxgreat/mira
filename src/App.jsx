@@ -806,10 +806,10 @@ export default function App() {
                 {[
                   { param:"Запись",           mira:"Сразу, без ожидания",      real:"Ждать 1–2 недели" },
                   { param:"Время",            mira:"24/7, в любой момент",      real:"По расписанию" },
-                  { param:"Цена",             mira:"990 ₽ / час",               real:"3000–8000 ₽ / сессия" },
+                  { param:"Цена",             mira:"990 ₽ / час",               real:"5000–20000 ₽ / сессия" },
                   { param:"Анонимность",      mira:"Полная, без данных",        real:"Имя, телефон, история" },
                   { param:"Осуждение",        mira:"Никогда",                   real:"Зависит от специалиста" },
-                  { param:"Первый шаг",       mira:"5 сообщений бесплатно",     real:"Сразу платить" },
+                  { param:"Первый шаг",       mira:"20 сообщений бесплатно",     real:"Сразу платить" },
                 ].map(function(row, i){ return (
                   <div key={row.param} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderBottom: i < 5 ? "1px solid #f0e8e0" : "none" }}>
                     <div style={{ padding:"13px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.muted, background:"#faf7f4", borderRight:"1px solid #f0e8e0", display:"flex", alignItems:"center" }}>{row.param}</div>
