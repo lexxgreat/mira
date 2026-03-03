@@ -624,11 +624,18 @@ export default function App() {
                 📋 Сессии
                 {sessions.length > 0 && <span style={{ background:C.brown, color:"#fff", borderRadius:9, padding:"1px 5px", fontSize:10 }}>{sessions.length}</span>}
               </button>
-              {!paid && (
-                <button onClick={function(){ setShowPaywall(true); }}
-                  style={{ background:"none", border:"1px solid #e2c9a8", borderRadius:7, padding:"5px 11px", fontSize:11, color:C.brownDark }}>
-                  💬 {Math.max(0, FREE_LIMIT - totalUserMsgs)}/{FREE_LIMIT}
-                </button>
+           {!paid && (
+  <button onClick={function(){ setShowPaywall(true); }}
+    style={{
+      background: isLimitReached ? C.brown : "none",
+      color: isLimitReached ? "#fff" : C.brownDark,
+      border: isLimitReached ? "none" : "1px solid #e2c9a8",
+      borderRadius:7, padding:"5px 11px", fontSize:11,
+      boxShadow: isLimitReached ? "0 2px 8px rgba(139,99,71,.3)" : "none"
+    }}>
+    {isLimitReached ? "✨ Продолжить за 990 ₽" : `💬 ${Math.max(0, FREE_LIMIT - totalUserMsgs)}/${FREE_LIMIT}`}
+  </button>
+)}
               )}
               {paid && (
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
