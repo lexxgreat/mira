@@ -3,7 +3,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────
-const FREE_LIMIT = 20;
+const FREE_LIMIT = 5;
+const PAYMENT_URL = "https://tbank.ru/cf/9VHVXpx00eg"; // замени на свою ссылку оплаты
 
 const SYSTEM_PROMPT = `Ты — Мира, психолог с 15-летним опытом, работаешь в подходе КПТ (когнитивно-поведенческая терапия). Общаешься как близкий друг с большим опытом — тепло, просто, без дистанции и без психологического жаргона.
 
@@ -11,7 +12,7 @@ const SYSTEM_PROMPT = `Ты — Мира, психолог с 15-летним о
 
 Как ты работаешь:
 
-1. ПОКАЖИ ЧТО ПОНЯЛ — конкретно отрази суть того, что человек сказал. Не "я понимаю тебя", а например: "Получается, ты уже долго тянешь это в одиночку и сил почти не осталось." Человек должен почувствовать — его действительно услышали.
+1. ПОКАЖИ ЧТО ПОНЯЛа — конкретно отрази суть того, что человек сказал. Не "я понимаю тебя", а например: "Получается, ты уже долго тянешь это в одиночку и сил почти не осталось." Человек должен почувствовать — его действительно услышали.
 
 2. КПТ-ПОДХОД — помогай человеку замечать связь между его мыслями, чувствами и поведением. Мягко указывай на автоматические мысли. Например: "Ты говоришь что не справляешься — а откуда эта уверенность? Что должно было произойти чтобы ты считал что справляешься?"
 
@@ -155,6 +156,14 @@ function ProgressBar({ used, total, paid }) {
 // Paywall modal
 // ─────────────────────────────────────────────────────────────
 function PaywallModal({ onClose, onPay, summary }) {
+  var [waiting, setWaiting] = useState(false);
+
+  function handlePay() {
+    window.open(PAYMENT_URL, "_blank");
+    setWaiting(true);
+    setTimeout(function(){ onPay(); }, 30000);
+  }
+
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(45,30,20,.55)", zIndex:300, backdropFilter:"blur(3px)" }}>
       <div style={{ position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", background:C.white, borderRadius:20, padding:"28px 26px 24px", maxWidth:440, width:"calc(100% - 32px)", boxShadow:"0 24px 64px rgba(0,0,0,.25)", textAlign:"center" }}>
@@ -185,14 +194,20 @@ function PaywallModal({ onClose, onPay, summary }) {
         </div>
 
         <div style={{ display:"grid", gap:9 }}>
-          <button
-            onClick={onPay}
-            style={{ background:C.brown, color:"#fff", border:"none", borderRadius:12, padding:"13px", fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", boxShadow:"0 4px 14px rgba(139,99,71,.35)", cursor:"pointer" }}
-            onMouseEnter={function(e){ e.currentTarget.style.background = C.brownDark; }}
-            onMouseLeave={function(e){ e.currentTarget.style.background = C.brown; }}
-          >
-            ✨ Час консультации — 990 ₽ →
-          </button>
+          {waiting ? (
+            <div style={{ background:"#fdf7f1", border:"1px solid #e2d5c6", borderRadius:12, padding:"13px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.muted }}>
+              ⏳ Ожидаем оплату... сессия откроется автоматически
+            </div>
+          ) : (
+            <button
+              onClick={handlePay}
+              style={{ background:C.brown, color:"#fff", border:"none", borderRadius:12, padding:"13px", fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", boxShadow:"0 4px 14px rgba(139,99,71,.35)", cursor:"pointer" }}
+              onMouseEnter={function(e){ e.currentTarget.style.background = C.brownDark; }}
+              onMouseLeave={function(e){ e.currentTarget.style.background = C.brown; }}
+            >
+              ✨ Час консультации — 990 ₽ →
+            </button>
+          )}
           <button onClick={onClose} style={{ background:"none", border:"none", color:C.faint, fontSize:13, fontFamily:"'DM Sans',sans-serif", cursor:"pointer", padding:"4px" }}>
             Не сейчас
           </button>
@@ -414,11 +429,9 @@ export default function App() {
   function goHome() {
     if (sess && sess.messages.length >= 4 && !sess.reviewShown) {
       setSessions(function(p){ return p.map(function(x){ return x.id === activeId ? Object.assign({}, x, { reviewShown: true }) : x; }); });
-      setPage("home");
       setTimeout(function(){ setShowReview(true); }, 500);
-    } else {
-      setPage("home");
     }
+    setPage("home"); // просто скрываем чат, сессия остаётся
   }
 
   const startListen = useCallback(function() {
@@ -589,12 +602,14 @@ export default function App() {
               )}
             </>
           )}
-          <button onClick={function(){ setShowDonate(true); }}
-            style={{ background:C.brownLight, color:"#fff", border:"none", borderRadius:7, padding:"6px 13px", fontSize:12, fontWeight:500 }}
-            onMouseEnter={function(e){ e.currentTarget.style.background = "#b07a52"; }}
-            onMouseLeave={function(e){ e.currentTarget.style.background = C.brownLight; }}>
-            ☕ Поддержать
-          </button>
+          {page === "home" && activeId && (
+            <button onClick={function(){ setPage("chat"); }}
+              style={{ background:C.brown, color:"#fff", border:"none", borderRadius:7, padding:"6px 14px", fontSize:12, fontWeight:500 }}
+              onMouseEnter={function(e){ e.currentTarget.style.background = C.brownDark; }}
+              onMouseLeave={function(e){ e.currentTarget.style.background = C.brown; }}>
+              ← Вернуться к Мире
+            </button>
+          )}
         </div>
       </nav>
 
