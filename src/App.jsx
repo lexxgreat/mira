@@ -25,14 +25,16 @@ const SYSTEM_PROMPT = `Ты — Мира, психолог с 15-летним о
 
 7. КРИЗИС — если человек говорит о суициде — назови горячую линию: 8-800-2000-122 (бесплатно, круглосуточно).`;
 
-const SUMMARY_PROMPT = `Ты — Мира, психолог КПТ. Напиши личный итог разговора — тепло, конкретно, без воды.
+const SUMMARY_PROMPT = `Ты — Мира, психолог КПТ, женщина. Напиши короткое саммари нашего разговора — 2-3 предложения, не больше.
 
-Напиши 3-4 предложения от первого лица ("Мы с тобой..."), где:
-1. Назови конкретную проблему или паттерн который вы обнаружили в разговоре
-2. Отметь что уже сдвинулось или какой шаг был сделан в понимании
-3. Скажи что ещё предстоит разобрать — создай ощущение незавершённого пути
+Цель: человек должен почувствовать что мы уже нащупали что-то важное, но остановились на самом интересном месте. Создай ощущение незавершённости — как будто только начали копать и нашли что-то настоящее.
 
-Пиши живо и тепло. Никаких шаблонов. Никаких вопросов. Только итог.`;
+Структура:
+1. Назови конкретно что нащупали — одну ключевую мысль или паттерн из разговора (с деталями, не абстрактно)
+2. Скажи что это только верхушка — за этим стоит что-то глубже, и ты уже видишь куда двигаться
+3. Одно предложение-приглашение продолжить — тепло, без давления
+
+Пиши коротко, живо, в женском роде. Никаких выводов и готовых ответов — только ощущение что самое важное впереди.`;
 
 const STARTERS = [
   "Я чувствую тревогу и не понимаю почему",
@@ -72,6 +74,8 @@ const C = {
 
 const fmt  = ts => new Date(ts).toLocaleTimeString("ru-RU", { hour:"2-digit", minute:"2-digit" });
 const fmtD = ts => new Date(ts).toLocaleDateString("ru-RU",  { day:"numeric", month:"long" });
+const fmtTimer = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+const SESSION_DURATION = 60 * 60;
 
 // ─────────────────────────────────────────────────────────────
 // API helper — goes through our secure backend /api/chat
@@ -150,10 +154,10 @@ function ProgressBar({ used, total, paid }) {
 // ─────────────────────────────────────────────────────────────
 // Paywall modal
 // ─────────────────────────────────────────────────────────────
-function PaywallModal({ onClose, summary }) {
+function PaywallModal({ onClose, onPay, summary }) {
   return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(45,30,20,.65)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-      <div onClick={function(e){ e.stopPropagation(); }} style={{ background:C.white, borderRadius:20, padding:"32px 28px", maxWidth:420, width:"100%", boxShadow:"0 24px 64px rgba(0,0,0,.25)", textAlign:"center" }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(45,30,20,.55)", zIndex:300, backdropFilter:"blur(3px)" }}>
+      <div style={{ position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", background:C.white, borderRadius:20, padding:"28px 26px 24px", maxWidth:440, width:"calc(100% - 32px)", boxShadow:"0 24px 64px rgba(0,0,0,.25)", textAlign:"center" }}>
         <div style={{ fontSize:40, marginBottom:10 }}>🌿</div>
         <h2 style={{ fontFamily:"'Lora',serif", fontSize:21, color:C.text, marginBottom:14, lineHeight:1.3 }}>
           Мы уже многое разобрали
@@ -176,17 +180,18 @@ function PaywallModal({ onClose, summary }) {
 
         <div style={{ background:"#f5ede3", border:"1px solid #ddc9ae", borderRadius:14, padding:"14px 18px", marginBottom:20 }}>
           <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted, marginBottom:4 }}>Продолжите — и разберёмся до конца</div>
-          <div style={{ fontFamily:"'Lora',serif", fontSize:28, color:C.brown, fontWeight:700, marginBottom:3 }}>1 000 ₽</div>
-          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}>полный час · без ограничений · история сохраняется</div>
+          <div style={{ fontFamily:"'Lora',serif", fontSize:28, color:C.brown, fontWeight:700, marginBottom:3 }}>990 ₽</div>
+          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}>1 час · безлимитный чат · без ограничений</div>
         </div>
 
         <div style={{ display:"grid", gap:9 }}>
           <button
+            onClick={onPay}
             style={{ background:C.brown, color:"#fff", border:"none", borderRadius:12, padding:"13px", fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", boxShadow:"0 4px 14px rgba(139,99,71,.35)", cursor:"pointer" }}
             onMouseEnter={function(e){ e.currentTarget.style.background = C.brownDark; }}
             onMouseLeave={function(e){ e.currentTarget.style.background = C.brown; }}
           >
-            Продолжить за 1 000 ₽ →
+            ✨ Час консультации — 990 ₽ →
           </button>
           <button onClick={onClose} style={{ background:"none", border:"none", color:C.faint, fontSize:13, fontFamily:"'DM Sans',sans-serif", cursor:"pointer", padding:"4px" }}>
             Не сейчас
@@ -355,6 +360,7 @@ export default function App() {
   const [sessions,       setSessions]       = useState([]);
   const [activeId,       setActiveId]       = useState(null);
   const [input,          setInput]          = useState("");
+  const [homeInput,      setHomeInput]      = useState("");
   const [loading,        setLoading]        = useState(false);
   const [showDonate,     setShowDonate]     = useState(false);
   const [showSidebar,    setShowSidebar]    = useState(false);
@@ -362,6 +368,8 @@ export default function App() {
   const [isListening,    setIsListening]    = useState(false);
   const [transcript,     setTranscript]     = useState("");
   const [paid,           setPaid]           = useState(false);
+  const [timerSec,       setTimerSec]       = useState(SESSION_DURATION);
+  const timerRef = useRef(null);
   const [totalUserMsgs,  setTotalUserMsgs]  = useState(0);
   const [showPaywall,    setShowPaywall]    = useState(false);
   const [paywallSummary, setPaywallSummary] = useState(null);
@@ -385,6 +393,24 @@ export default function App() {
     });
   }, []);
 
+  useEffect(function() {
+    if (paid && timerSec > 0) {
+      timerRef.current = setInterval(function() {
+        setTimerSec(function(s) {
+          if (s <= 1) { clearInterval(timerRef.current); setPaid(false); return 0; }
+          return s - 1;
+        });
+      }, 1000);
+    }
+    return function() { clearInterval(timerRef.current); };
+  }, [paid]);
+
+  function activatePaid() {
+    setShowPaywall(false);
+    setPaid(true);
+    setTimerSec(SESSION_DURATION);
+  }
+
   function goHome() {
     if (sess && sess.messages.length >= 4 && !sess.reviewShown) {
       setSessions(function(p){ return p.map(function(x){ return x.id === activeId ? Object.assign({}, x, { reviewShown: true }) : x; }); });
@@ -399,15 +425,31 @@ export default function App() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { alert("Голос недоступен в превью."); return; }
     const r = new SR();
-    r.lang = "ru-RU"; r.continuous = false; r.interimResults = true;
+    r.lang = "ru-RU"; r.continuous = true; r.interimResults = true;
     r.onstart  = function(){ setIsListening(true); setTranscript(""); };
-    r.onresult = function(e){ const t = Array.from(e.results).map(function(x){ return x[0].transcript; }).join(""); setTranscript(t); setInput(t); };
-    r.onend    = function(){ setIsListening(false); recRef.current = null; };
-    r.onerror  = function(){ setIsListening(false); recRef.current = null; };
+    r.onresult = function(e){
+      var final = ""; var interim = "";
+      for (var i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) { final += e.results[i][0].transcript; }
+        else { interim += e.results[i][0].transcript; }
+      }
+      var t = final + interim;
+      setTranscript(t); setInput(t);
+    };
+    r.onend = function(){
+      // restart if still listening (continuous mode)
+      if (recRef.current) { try { recRef.current.start(); } catch(e) {} }
+    };
+    r.onerror = function(e){ if (e.error !== "no-speech") { setIsListening(false); recRef.current = null; } };
     recRef.current = r; r.start();
   }, []);
 
-  const stopListen = useCallback(function(){ if (recRef.current) recRef.current.stop(); setIsListening(false); }, []);
+  const stopListen = useCallback(function(){
+    var r = recRef.current;
+    recRef.current = null; // clear first to prevent auto-restart in onend
+    if (r) { try { r.stop(); } catch(e) {} }
+    setIsListening(false);
+  }, []);
 
   function handleMic() {
     if (isListening) { stopListen(); setTimeout(function(){ if (transcript.trim()) send(transcript); }, 300); }
@@ -420,6 +462,13 @@ export default function App() {
     setActiveId(id);
     setPage("chat");
     if (starter) setTimeout(function(){ doSend(starter, id, []); }, 100);
+  }
+
+  function startFromHome() {
+    var text = homeInput.trim();
+    if (!text) return;
+    setHomeInput("");
+    newSess(text);
   }
 
   function delSess(id, e) {
@@ -472,18 +521,17 @@ export default function App() {
       if (willHitLimit) {
         setPaywallSummary(null);
         setTimeout(function(){ setShowPaywall(true); }, 700);
-        // Use only last 6 messages for faster summary, add 8s timeout fallback
-        var summaryMsgs = finalMsgs.slice(-6);
-        var summaryText = "Вот наш разговор:\n\n" + summaryMsgs.map(function(m){ return (m.role==="user" ? "Человек: " : "Мира: ") + m.content; }).join("\n\n") + "\n\nНапиши личный итог.";
+        // Pass full conversation for accurate personal summary
+        var summaryMsgs = finalMsgs.filter(function(m){ return m.role === "user" || m.role === "assistant"; });
         var summaryTimeout = setTimeout(function(){
-          setPaywallSummary("Мы хорошо поработали в этом разговоре — ты уже начал видеть ситуацию иначе. Хочешь разобраться до конца?");
-        }, 8000);
-        callAPI(SUMMARY_PROMPT, [{ role:"user", content: summaryText }], 250).then(function(summary){
+          setPaywallSummary("Я увидела в нашем разговоре кое-что важное — и хочу разобраться с тобой глубже. Чтобы дойти до сути, нужно больше времени. Час работы со мной стоит 990 рублей — и это реальный шаг к изменениям.");
+        }, 10000);
+        callAPI(SUMMARY_PROMPT, summaryMsgs, 250).then(function(summary){
           clearTimeout(summaryTimeout);
           if (summary) setPaywallSummary(summary);
         }).catch(function(){
           clearTimeout(summaryTimeout);
-          setPaywallSummary("Мы хорошо поработали в этом разговоре — ты уже начал видеть ситуацию иначе. Хочешь разобраться до конца?");
+          setPaywallSummary("Я увидела в нашем разговоре кое-что важное — и хочу разобраться с тобой глубже. Чтобы дойти до сути, нужно больше времени. Час работы со мной стоит 990 рублей.");
         });
       }
     } catch(err) {
@@ -533,6 +581,12 @@ export default function App() {
                   💬 {Math.max(0, FREE_LIMIT - totalUserMsgs)}/{FREE_LIMIT}
                 </button>
               )}
+              {paid && (
+                <div style={{ display:"flex", alignItems:"center", gap:5, background:"#f0faf0", border:"1px solid #a8d8a8", borderRadius:8, padding:"4px 10px" }}>
+                  <span style={{ fontSize:11 }}>⏱</span>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color: timerSec < 600 ? "#c0603a" : timerSec < 1800 ? "#b07830" : "#4a8a4a", fontVariantNumeric:"tabular-nums" }}>{fmtTimer(timerSec)}</span>
+                </div>
+              )}
             </>
           )}
           <button onClick={function(){ setShowDonate(true); }}
@@ -548,21 +602,44 @@ export default function App() {
       {page === "home" && (
         <div className="fi" style={{ flex:1, overflowY:"auto" }}>
           <div style={{ maxWidth:740, margin:"0 auto", padding:"40px 20px" }}>
-            <div style={{ textAlign:"center", marginBottom:40 }}>
+            <div style={{ textAlign:"center", marginBottom:32 }}>
               <div style={{ fontSize:46, marginBottom:14 }}>🌿</div>
               <h1 style={{ fontFamily:"'Lora',serif", fontSize:"clamp(24px,4vw,42px)", fontWeight:600, color:C.text, lineHeight:1.2, marginBottom:12 }}>
                 Пространство для<br/><em style={{ color:C.brown }}>внутреннего диалога</em>
               </h1>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#7a6558", maxWidth:440, margin:"0 auto 22px", lineHeight:1.7 }}>
-                Мира — психолог КПТ, который выслушает как друг, задаст один точный вопрос и поможет найти выход.
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#7a6558", maxWidth:440, margin:"0 auto 0", lineHeight:1.7 }}>
+                Мира — психолог КПТ, которая выслушает как друг и поможет найти выход.
               </p>
-              <button onClick={function(){ newSess(); }}
-                style={{ background:C.brown, color:"#fff", border:"none", borderRadius:11, padding:"11px 26px", fontSize:14, fontWeight:500, boxShadow:"0 4px 14px rgba(139,99,71,.3)" }}
-                onMouseEnter={function(e){ e.currentTarget.style.background = C.brownDark; }}
-                onMouseLeave={function(e){ e.currentTarget.style.background = C.brown; }}>
-                Начать бесплатно →
+            </div>
+
+            <div style={{ background:C.white, borderRadius:20, padding:22, boxShadow:"0 4px 24px rgba(139,99,71,0.1)", border:"1px solid #ede5d8", marginBottom:28 }}>
+              <textarea
+                value={homeInput}
+                onChange={function(e){ setHomeInput(e.target.value); }}
+                onKeyDown={function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startFromHome(); } }}
+                placeholder="Что тебя беспокоит? Расскажи Мире..."
+                rows={3}
+                style={{ width:"100%", border:"1.5px solid #e2d5c6", borderRadius:14, padding:"13px 15px", fontSize:15, color:C.text, background:"#faf7f4", lineHeight:1.6, transition:"all .2s", marginBottom:12, display:"block", fontFamily:"'DM Sans',sans-serif", resize:"none", outline:"none" }}
+                onFocus={function(e){ e.target.style.borderColor = C.brown; e.target.style.boxShadow = "0 0 0 3px rgba(139,99,71,0.12)"; }}
+                onBlur={function(e){ e.target.style.borderColor = "#e2d5c6"; e.target.style.boxShadow = "none"; }}
+                onInput={function(e){ e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 150) + "px"; }}
+              />
+              <div style={{ display:"flex", gap:7, flexWrap:"wrap", marginBottom:14 }}>
+                {["Тревога","Отношения","Усталость","Стресс"].map(function(chip){ return (
+                  <button key={chip} className="sb"
+                    onClick={function(){ setHomeInput(function(p){ return p ? p + " " + chip.toLowerCase() : chip.toLowerCase(); }); }}
+                    style={{ background:"#f5ede4", border:"1px solid #e2d0be", borderRadius:20, padding:"5px 13px", fontSize:12, color:"#6b4f3a", transition:"all .15s" }}>
+                    {chip}
+                  </button>
+                ); })}
+              </div>
+              <button onClick={startFromHome} disabled={!homeInput.trim()}
+                style={{ width:"100%", background: homeInput.trim() ? C.brown : "#d4c4b0", color:"#fff", border:"none", borderRadius:12, padding:"12px", fontSize:14, fontWeight:500, transition:"background .2s", boxShadow: homeInput.trim() ? "0 4px 14px rgba(139,99,71,.25)" : "none" }}
+                onMouseEnter={function(e){ if (homeInput.trim()) e.currentTarget.style.background = C.brownDark; }}
+                onMouseLeave={function(e){ e.currentTarget.style.background = homeInput.trim() ? C.brown : "#d4c4b0"; }}>
+                Начать разговор с Мирой →
               </button>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.faint, marginTop:10 }}>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.faint, textAlign:"center", marginTop:8 }}>
                 {FREE_LIMIT} сообщений бесплатно · без регистрации
               </p>
             </div>
@@ -688,14 +765,11 @@ export default function App() {
 
                 <div style={{ padding:"11px 14px", background:C.white, borderTop:"1px solid " + C.border, flexShrink:0 }}>
                   {isLimitReached ? (
-                    <div style={{ textAlign:"center", padding:"8px 0" }}>
-                      <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.muted, marginBottom:10 }}>Бесплатный лимит исчерпан</p>
-                      <button onClick={function(){ setShowPaywall(true); }}
-                        style={{ background:C.brown, color:"#fff", border:"none", borderRadius:10, padding:"10px 24px", fontSize:14, fontWeight:500, boxShadow:"0 4px 12px rgba(139,99,71,.3)" }}
-                        onMouseEnter={function(e){ e.currentTarget.style.background = C.brownDark; }}
-                        onMouseLeave={function(e){ e.currentTarget.style.background = C.brown; }}>
-                        Продолжить за 1 000 ₽ →
-                      </button>
+                    <div style={{ display:"flex", gap:7, background:"#f3ede8", borderRadius:22, border:"1px solid #e2d5c6", padding:"5px 5px 5px 14px", alignItems:"flex-end", opacity:0.45, pointerEvents:"none" }}>
+                      <textarea placeholder="Сообщение..." rows={1} disabled
+                        style={{ flex:1, background:"transparent", border:"none", fontSize:13, color:C.muted, lineHeight:1.5, paddingTop:5, fontFamily:"'DM Sans',sans-serif" }}
+                      />
+                      <div style={{ width:36, height:36, background:"#d4c4b0", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:17, flexShrink:0 }}>↑</div>
                     </div>
                   ) : (
                     <>
@@ -737,7 +811,7 @@ export default function App() {
 
       {/* MODALS */}
       {showDonate  && <DonateModal  onClose={function(){ setShowDonate(false); }} />}
-      {showPaywall && <PaywallModal onClose={function(){ setShowPaywall(false); }} summary={paywallSummary} />}
+      {showPaywall && <PaywallModal onClose={function(){ setShowPaywall(false); }} onPay={activatePaid} summary={paywallSummary} />}
       {showReview  && <ReviewModal  onClose={function(){ setShowReview(false); }} onSubmit={function(rev){ setReviews(function(p){ return p.concat([rev]); }); }} />}
     </div>
   );
