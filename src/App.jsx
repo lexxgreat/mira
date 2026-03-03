@@ -3,22 +3,22 @@ import { useState, useRef, useEffect, useCallback } from "react";
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────
-const FREE_LIMIT = 5;
+const FREE_LIMIT = 20;
 const PAYMENT_URL = "https://tbank.ru/cf/9VHVXpx00eg"; // замени на свою ссылку оплаты
 
-const SYSTEM_PROMPT = `Ты — Мира, женщина - психолог с 15-летним опытом, работаешь в подходе КПТ (когнитивно-поведенческая терапия). Общаешься как близкий друг с большим опытом — тепло, просто, без дистанции и без психологического жаргона.
+const SYSTEM_PROMPT = `Ты — Мира, психолог с 15-летним опытом, работаешь в подходе КПТ (когнитивно-поведенческая терапия). Общаешься как близкий друг с большим опытом — тепло, просто, без дистанции и без психологического жаргона.
 
 СТРОГОЕ ПРАВИЛО: задавай только ОДИН вопрос за раз. Никогда не задавай два вопроса подряд.
 
 Как ты работаешь:
 
-1. ПОКАЖИ ЧТО ПОНЯЛа — конкретно отрази суть того, что человек сказал. Не "я понимаю тебя", а например: "Получается, ты уже долго тянешь это в одиночку и сил почти не осталось." Человек должен почувствовать — его действительно услышали.
+1. ПОКАЖИ ЧТО ПОНЯЛ — конкретно отрази суть того, что человек сказал. Не "я понимаю тебя", а например: "Получается, ты уже долго тянешь это в одиночку и сил почти не осталось." Человек должен почувствовать — его действительно услышали.
 
 2. КПТ-ПОДХОД — помогай человеку замечать связь между его мыслями, чувствами и поведением. Мягко указывай на автоматические мысли. Например: "Ты говоришь что не справляешься — а откуда эта уверенность? Что должно было произойти чтобы ты считал что справляешься?"
 
-3. ВЕДИ К РЕШЕНИЮ — задавай вопросы которые меняют угол зрения: "Что бы ты посоветовал другу в такой же ситуации?", "Что самое страшное могло бы случиться — и как бы ты с этим справился?", "Что ты уже пробовал и что немного помогало?", Вспомни положительные моменты жизни как было тогда?
+3. ВЕДИ К РЕШЕНИЮ — задавай вопросы которые меняют угол зрения: "Что бы ты посоветовал другу в такой же ситуации?", "Что самое страшное могло бы случиться — и как бы ты с этим справился?", "Что ты уже пробовал и что немного помогало?"
 
-4. КОНКРЕТНЫЕ ШАГИ — если человек готов действовать и просит совет, предложи один маленький конкретный шаг объясни почему его надо сделать, обоснуй. Не "попробуй отдохнуть", а "сегодня вечером выдели 15 минут только для себя — без телефона и дел".
+4. КОНКРЕТНЫЕ ШАГИ — если человек готов действовать, предложи один маленький конкретный шаг. Не "попробуй отдохнуть", а "сегодня вечером выдели 15 минут только для себя — без телефона и дел".
 
 5. СТИЛЬ — говори живо и тепло. "Это звучит правда тяжело", "понятно почему ты так себя чувствуешь". Никаких шаблонов: "я слышу тебя", "спасибо что поделился" — они звучат искусственно.
 
@@ -26,7 +26,7 @@ const SYSTEM_PROMPT = `Ты — Мира, женщина - психолог с 1
 
 7. КРИЗИС — если человек говорит о суициде — назови горячую линию: 8-800-2000-122 (бесплатно, круглосуточно).`;
 
-const SUMMARY_PROMPT = `Ты — Мира, психолог КПТ, женщина. Напиши короткое саммари нашего разговора — 4-5 предложения, не больше.
+const SUMMARY_PROMPT = `Ты — Мира, психолог КПТ, женщина. Напиши короткое саммари нашего разговора — 2-3 предложения, не больше.
 
 Цель: человек должен почувствовать что мы уже нащупали что-то важное, но остановились на самом интересном месте. Создай ощущение незавершённости — как будто только начали копать и нашли что-то настоящее.
 
@@ -412,7 +412,7 @@ export default function App() {
     if (paid && timerSec > 0) {
       timerRef.current = setInterval(function() {
         setTimerSec(function(s) {
-          if (s <= 1) { clearInterval(timerRef.current); setPaid(false); setShowPaywall(true); return 0; }
+          if (s <= 1) { clearInterval(timerRef.current); setPaid(false); return 0; }
           return s - 1;
         });
       }, 1000);
@@ -535,12 +535,11 @@ export default function App() {
         setPaywallSummary(null);
         setTimeout(function(){ setShowPaywall(true); }, 700);
         // Pass full conversation for accurate personal summary
-        var summaryMsgs = finalMsgs.slice(-6);
-var summaryText = "Вот наш разговор:\n\n" + summaryMsgs.map(function(m){ return (m.role==="user" ? "Человек: " : "Мира: ") + m.content; }).join("\n\n") + "\n\nНапиши личный итог.";
+        var summaryMsgs = finalMsgs.filter(function(m){ return m.role === "user" || m.role === "assistant"; });
         var summaryTimeout = setTimeout(function(){
           setPaywallSummary("Я увидела в нашем разговоре кое-что важное — и хочу разобраться с тобой глубже. Чтобы дойти до сути, нужно больше времени. Час работы со мной стоит 990 рублей — и это реальный шаг к изменениям.");
         }, 10000);
-        callAPI(SUMMARY_PROMPT, [{ role:"user", content: summaryText }], 250).then(function(summary){
+        callAPI(SUMMARY_PROMPT, summaryMsgs, 250).then(function(summary){
           clearTimeout(summaryTimeout);
           if (summary) setPaywallSummary(summary);
         }).catch(function(){
@@ -617,18 +616,21 @@ var summaryText = "Вот наш разговор:\n\n" + summaryMsgs.map(functi
       {/* HOME */}
       {page === "home" && (
         <div className="fi" style={{ flex:1, overflowY:"auto" }}>
-          <div style={{ maxWidth:740, margin:"0 auto", padding:"40px 20px" }}>
+          <div style={{ maxWidth:760, margin:"0 auto", padding:"40px 20px" }}>
+
+            {/* HERO */}
             <div style={{ textAlign:"center", marginBottom:32 }}>
-              <div style={{ fontSize:46, marginBottom:14 }}>🌿</div>
-              <h1 style={{ fontFamily:"'Lora',serif", fontSize:"clamp(24px,4vw,42px)", fontWeight:600, color:C.text, lineHeight:1.2, marginBottom:12 }}>
-                Пространство для<br/><em style={{ color:C.brown }}>внутреннего диалога</em>
+              <div style={{ fontSize:44, marginBottom:14 }}>🌿</div>
+              <h1 style={{ fontFamily:"'Lora',serif", fontSize:"clamp(22px,4vw,38px)", fontWeight:600, color:C.text, lineHeight:1.25, marginBottom:14 }}>
+                Когда не с кем поговорить —<br/><em style={{ color:C.brown }}>Мира всегда здесь</em>
               </h1>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#7a6558", maxWidth:440, margin:"0 auto 0", lineHeight:1.7 }}>
-                Мира — психолог КПТ, которая выслушает как друг и поможет найти выход.
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#7a6558", maxWidth:460, margin:"0 auto", lineHeight:1.75 }}>
+                ИИ-психолог в подходе КПТ. Без регистрации, без осуждения, без ожидания записи. Пиши хоть в 3 ночи.
               </p>
             </div>
 
-            <div style={{ background:C.white, borderRadius:20, padding:22, boxShadow:"0 4px 24px rgba(139,99,71,0.1)", border:"1px solid #ede5d8", marginBottom:28 }}>
+            {/* INPUT CARD */}
+            <div style={{ background:C.white, borderRadius:20, padding:22, boxShadow:"0 4px 24px rgba(139,99,71,0.1)", border:"1px solid #ede5d8", marginBottom:40 }}>
               <textarea
                 value={homeInput}
                 onChange={function(e){ setHomeInput(e.target.value); }}
@@ -641,7 +643,7 @@ var summaryText = "Вот наш разговор:\n\n" + summaryMsgs.map(functi
                 onInput={function(e){ e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 150) + "px"; }}
               />
               <div style={{ display:"flex", gap:7, flexWrap:"wrap", marginBottom:14 }}>
-                {["Тревога","Отношения","Усталость","Стресс"].map(function(chip){ return (
+                {["Тревога","Отношения","Усталость","Стресс","Одиночество","Работа"].map(function(chip){ return (
                   <button key={chip} className="sb"
                     onClick={function(){ setHomeInput(function(p){ return p ? p + " " + chip.toLowerCase() : chip.toLowerCase(); }); }}
                     style={{ background:"#f5ede4", border:"1px solid #e2d0be", borderRadius:20, padding:"5px 13px", fontSize:12, color:"#6b4f3a", transition:"all .15s" }}>
@@ -650,39 +652,106 @@ var summaryText = "Вот наш разговор:\n\n" + summaryMsgs.map(functi
                 ); })}
               </div>
               <button onClick={startFromHome} disabled={!homeInput.trim()}
-                style={{ width:"100%", background: homeInput.trim() ? C.brown : "#d4c4b0", color:"#fff", border:"none", borderRadius:12, padding:"12px", fontSize:14, fontWeight:500, transition:"background .2s", boxShadow: homeInput.trim() ? "0 4px 14px rgba(139,99,71,.25)" : "none" }}
+                style={{ width:"100%", background: homeInput.trim() ? C.brown : "#d4c4b0", color:"#fff", border:"none", borderRadius:12, padding:"13px", fontSize:15, fontWeight:600, transition:"background .2s", boxShadow: homeInput.trim() ? "0 4px 14px rgba(139,99,71,.25)" : "none" }}
                 onMouseEnter={function(e){ if (homeInput.trim()) e.currentTarget.style.background = C.brownDark; }}
                 onMouseLeave={function(e){ e.currentTarget.style.background = homeInput.trim() ? C.brown : "#d4c4b0"; }}>
-                Начать разговор с Мирой →
+                Начать бесплатный чат →
               </button>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.faint, textAlign:"center", marginTop:8 }}>
-                {FREE_LIMIT} сообщений бесплатно · без регистрации
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.faint, textAlign:"center", marginTop:9 }}>
+                {FREE_LIMIT} сообщений бесплатно · без регистрации · без карты
               </p>
             </div>
 
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))", gap:12, marginBottom:40 }}>
-              {[
-                { i:"🔒", t:"Безопасно",      d:"Всё остаётся между вами" },
-                { i:"🎙️", t:"Голос или текст", d:"Как вам удобно" },
-                { i:"🧠", t:"КПТ подход",      d:"Помогает увидеть мысли иначе" },
-                { i:"⚡", t:"Без ожидания",    d:"Доступно 24/7, сразу" },
-              ].map(function(x){ return (
-                <div key={x.t} style={{ background:C.white, borderRadius:13, padding:16, border:"1px solid #e8ddd2", textAlign:"center" }}>
-                  <div style={{ fontSize:24, marginBottom:6 }}>{x.i}</div>
-                  <div style={{ fontFamily:"'Lora',serif", fontWeight:600, fontSize:13, color:C.text, marginBottom:4 }}>{x.t}</div>
-                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted, lineHeight:1.5 }}>{x.d}</div>
-                </div>
-              ); })}
+            {/* 3 STEPS */}
+            <div style={{ marginBottom:44 }}>
+              <h2 style={{ fontFamily:"'Lora',serif", fontSize:"clamp(18px,3vw,26px)", fontWeight:600, color:C.text, textAlign:"center", marginBottom:24 }}>
+                3 шага до поддержки
+              </h2>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))", gap:14 }}>
+                {[
+                  { n:"1", t:"Напиши что болит", d:"Просто расскажи что происходит — Мира выслушает без осуждения, как надёжный друг" },
+                  { n:"2", t:"Разберись в себе", d:"Мира задаёт точные вопросы и помогает увидеть ситуацию под новым углом" },
+                  { n:"3", t:"Почувствуй облегчение", d:"96% пользователей отмечают реальную пользу уже после первой сессии" },
+                ].map(function(s){ return (
+                  <div key={s.n} style={{ background:C.white, borderRadius:16, padding:"22px 18px", border:"1px solid #e8ddd2", textAlign:"center", boxShadow:"0 2px 10px rgba(0,0,0,0.04)" }}>
+                    <div style={{ width:40, height:40, background:C.brown, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", fontFamily:"'Lora',serif", fontSize:18, fontWeight:600, color:"#fff" }}>{s.n}</div>
+                    <div style={{ fontFamily:"'Lora',serif", fontWeight:600, fontSize:15, color:C.text, marginBottom:8 }}>{s.t}</div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.muted, lineHeight:1.6 }}>{s.d}</div>
+                  </div>
+                ); })}
+              </div>
             </div>
 
-            <h2 style={{ fontFamily:"'Lora',serif", fontSize:16, color:C.text, marginBottom:12, textAlign:"center" }}>С чего начать?</h2>
-            {STARTERS.map(function(s){ return (
-              <button key={s} className="sb" onClick={function(){ newSess(s); }}
-                style={{ width:"100%", background:C.white, border:"1px solid #e2d5c6", borderRadius:11, padding:"12px 16px", textAlign:"left", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#5c4233", display:"flex", alignItems:"center", gap:8, marginBottom:7 }}>
-                <span style={{ color:C.brownLight }}>→</span>{s}
-              </button>
-            ); })}
+            {/* BENEFITS */}
+            <div style={{ marginBottom:44 }}>
+              <h2 style={{ fontFamily:"'Lora',serif", fontSize:"clamp(18px,3vw,26px)", fontWeight:600, color:C.text, textAlign:"center", marginBottom:24 }}>
+                Почему выбирают Миру
+              </h2>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:12 }}>
+                {[
+                  { i:"🌙", t:"Круглосуточно", d:"Пиши в 3 ночи, когда тревога не даёт уснуть — Мира всегда онлайн" },
+                  { i:"🔒", t:"Полная анонимность", d:"Без регистрации и личных данных. Никто не узнает о вашем разговоре" },
+                  { i:"💬", t:"Без осуждения", d:"Никакого взгляда в глаза. Говори о чём угодно — Мира не осудит" },
+                  { i:"💰", t:"В 3–8 раз дешевле", d:"990 ₽ за час вместо 3000–8000 ₽ у живого психолога" },
+                ].map(function(x){ return (
+                  <div key={x.t} style={{ background:C.white, borderRadius:14, padding:"18px 16px", border:"1px solid #e8ddd2", display:"flex", gap:12, alignItems:"flex-start" }}>
+                    <div style={{ fontSize:26, flexShrink:0, marginTop:2 }}>{x.i}</div>
+                    <div>
+                      <div style={{ fontFamily:"'Lora',serif", fontWeight:600, fontSize:14, color:C.text, marginBottom:5 }}>{x.t}</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted, lineHeight:1.6 }}>{x.d}</div>
+                    </div>
+                  </div>
+                ); })}
+              </div>
+            </div>
 
+            {/* VS COMPARISON */}
+            <div style={{ marginBottom:44 }}>
+              <h2 style={{ fontFamily:"'Lora',serif", fontSize:"clamp(18px,3vw,26px)", fontWeight:600, color:C.text, textAlign:"center", marginBottom:24 }}>
+                Мира vs живой психолог
+              </h2>
+              <div style={{ background:C.white, borderRadius:18, border:"1px solid #e8ddd2", overflow:"hidden", boxShadow:"0 2px 12px rgba(0,0,0,0.05)" }}>
+                {[
+                  { param:"Запись",           mira:"Сразу, без ожидания",      real:"Ждать 1–2 недели" },
+                  { param:"Время",            mira:"24/7, в любой момент",      real:"По расписанию" },
+                  { param:"Цена",             mira:"990 ₽ / час",               real:"3000–8000 ₽ / сессия" },
+                  { param:"Анонимность",      mira:"Полная, без данных",        real:"Имя, телефон, история" },
+                  { param:"Осуждение",        mira:"Никогда",                   real:"Зависит от специалиста" },
+                  { param:"Первый шаг",       mira:"20 сообщений бесплатно",    real:"Сразу платить" },
+                ].map(function(row, i){ return (
+                  <div key={row.param} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderBottom: i < 5 ? "1px solid #f0e8e0" : "none" }}>
+                    <div style={{ padding:"13px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.muted, background:"#faf7f4", borderRight:"1px solid #f0e8e0", display:"flex", alignItems:"center" }}>{row.param}</div>
+                    <div style={{ padding:"13px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#3a6e3a", fontWeight:500, borderRight:"1px solid #f0e8e0", display:"flex", alignItems:"center", gap:6 }}>
+                      <span style={{ color:"#5aaa5a", fontSize:15 }}>✓</span>{row.mira}
+                    </div>
+                    <div style={{ padding:"13px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.muted, display:"flex", alignItems:"center" }}>{row.real}</div>
+                  </div>
+                ); })}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", background:"#f5ede4", padding:"0" }}>
+                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}></div>
+                  <div style={{ padding:"10px 16px", fontFamily:"'Lora',serif", fontSize:13, color:C.brown, fontWeight:600 }}>🌿 Мира</div>
+                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}>Живой психолог</div>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA BOTTOM */}
+            <div style={{ background:"linear-gradient(135deg, #6b4f3a 0%, #8b6347 100%)", borderRadius:20, padding:"32px 28px", textAlign:"center", marginBottom:44 }}>
+              <div style={{ fontFamily:"'Lora',serif", fontSize:"clamp(18px,3vw,24px)", color:"#fff", fontWeight:600, marginBottom:10 }}>
+                Попробуй прямо сейчас — бесплатно
+              </div>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"rgba(255,255,255,0.8)", marginBottom:20, lineHeight:1.6 }}>
+                {FREE_LIMIT} сообщений без регистрации и без карты.<br/>Платишь только если сам захочешь продолжить.
+              </p>
+              <button onClick={function(){ newSess(); }}
+                style={{ background:"#fff", color:C.brownDark, border:"none", borderRadius:12, padding:"13px 32px", fontSize:15, fontWeight:600, boxShadow:"0 4px 20px rgba(0,0,0,0.15)", cursor:"pointer" }}
+                onMouseEnter={function(e){ e.currentTarget.style.background = "#fdf5ee"; }}
+                onMouseLeave={function(e){ e.currentTarget.style.background = "#fff"; }}>
+                Начать бесплатный чат →
+              </button>
+            </div>
+
+            {/* REVIEWS */}
             <ReviewsSection reviews={reviews} />
 
             <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:"#b0a090", textAlign:"center", marginTop:24, lineHeight:1.6 }}>
