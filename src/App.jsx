@@ -810,7 +810,13 @@ export default function App() {
                   { param:"Анонимность",      mira:"Полная, без данных",        real:"Имя, телефон, история" },
                   { param:"Осуждение",        mira:"Никогда",                   real:"Зависит от специалиста" },
                   { param:"Первый шаг",       mira:"20 сообщений бесплатно",     real:"Сразу платить" },
-                ].map(function(row, i){ return (
+                ]
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", background:"#f5ede4", padding:"0" }}>
+                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}></div>
+                  <div style={{ padding:"10px 16px", fontFamily:"'Lora',serif", fontSize:13, color:C.brown, fontWeight:600 }}>🌿 Мира</div>
+                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}>Живой психолог</div>
+                </div>
+                  .map(function(row, i){ return (
                   <div key={row.param} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderBottom: i < 5 ? "1px solid #f0e8e0" : "none" }}>
                     <div style={{ padding:"13px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.muted, background:"#faf7f4", borderRight:"1px solid #f0e8e0", display:"flex", alignItems:"center" }}>{row.param}</div>
                     <div style={{ padding:"13px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#3a6e3a", fontWeight:500, borderRight:"1px solid #f0e8e0", display:"flex", alignItems:"center", gap:6 }}>
@@ -819,11 +825,7 @@ export default function App() {
                     <div style={{ padding:"13px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.muted, display:"flex", alignItems:"center" }}>{row.real}</div>
                   </div>
                 ); })}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", background:"#f5ede4", padding:"0" }}>
-                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}></div>
-                  <div style={{ padding:"10px 16px", fontFamily:"'Lora',serif", fontSize:13, color:C.brown, fontWeight:600 }}>🌿 Мира</div>
-                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}>Живой психолог</div>
-                </div>
+            
               </div>
             </div>
 
