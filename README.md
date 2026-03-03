@@ -1,1 +1,57 @@
-# mira
+# 🌿 Мира — ИИ-психолог КПТ
+
+Работает на **Gemini 2.0 Flash** — бесплатно до 1500 запросов в день.
+
+## Быстрый старт
+
+### 1. Получи бесплатный ключ Gemini
+Зайди на [aistudio.google.com](https://aistudio.google.com) → "Get API key" → создай ключ. Занимает 2 минуты.
+
+### 2. Клонируй и установи
+```bash
+git clone https://github.com/ТВО_ИМЯ/mira-app.git
+cd mira-app
+npm install
+```
+
+### 3. Локальная разработка
+```bash
+cp .env.example .env.local
+# Вставь свой ключ Gemini в .env.local
+npm run dev
+```
+
+### 4. Деплой на Vercel
+1. Зайди на [vercel.com](https://vercel.com) → войди через GitHub
+2. "Add New Project" → выбери репозиторий `mira-app`
+3. **Settings → Environment Variables** → добавь:
+   - `GEMINI_API_KEY` = `AIzaSy...` (твой ключ)
+4. Deploy → через 2 минуты сайт живёт на `mira-app.vercel.app` 🚀
+
+Следующие деплои — автоматически при каждом `git push`
+
+---
+
+## Смена модели
+
+В `api/chat.js` измени URL:
+```js
+// Бесплатно (1500 запросов/день):
+gemini-2.0-flash
+
+// Если захочешь Claude (платно, лучшее качество):
+// Замени весь api/chat.js на версию с Anthropic API
+```
+
+## Структура
+```
+├── api/
+│   └── chat.js        ← бэкенд (ключ API здесь, скрыт от пользователей)
+├── src/
+│   └── App.jsx        ← весь React фронтенд
+├── public/
+│   └── favicon.svg
+├── index.html
+├── vite.config.js
+└── vercel.json
+```
