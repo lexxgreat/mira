@@ -535,11 +535,12 @@ export default function App() {
         setPaywallSummary(null);
         setTimeout(function(){ setShowPaywall(true); }, 700);
         // Pass full conversation for accurate personal summary
-        var summaryMsgs = finalMsgs.filter(function(m){ return m.role === "user" || m.role === "assistant"; });
+        var summaryMsgs = finalMsgs.slice(-6);
+var summaryText = "Вот наш разговор:\n\n" + summaryMsgs.map(function(m){ return (m.role==="user" ? "Человек: " : "Мира: ") + m.content; }).join("\n\n") + "\n\nНапиши личный итог.";
         var summaryTimeout = setTimeout(function(){
           setPaywallSummary("Я увидела в нашем разговоре кое-что важное — и хочу разобраться с тобой глубже. Чтобы дойти до сути, нужно больше времени. Час работы со мной стоит 990 рублей — и это реальный шаг к изменениям.");
         }, 10000);
-        callAPI(SUMMARY_PROMPT, summaryMsgs, 250).then(function(summary){
+        callAPI(SUMMARY_PROMPT, [{ role:"user", content: summaryText }], 250).then(function(summary){
           clearTimeout(summaryTimeout);
           if (summary) setPaywallSummary(summary);
         }).catch(function(){
