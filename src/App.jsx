@@ -802,6 +802,11 @@ export default function App() {
               <h2 style={{ fontFamily:"'Lora',serif", fontSize:"clamp(18px,3vw,26px)", fontWeight:600, color:C.text, textAlign:"center", marginBottom:24 }}>
                 Мира vs живой психолог
               </h2>
+                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", background:"#f5ede4", padding:"0" }}>
+                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}></div>
+                  <div style={{ padding:"10px 16px", fontFamily:"'Lora',serif", fontSize:13, color:C.brown, fontWeight:600 }}>🌿 Мира</div>
+                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}>Живой психолог</div>
+                </div>
               <div style={{ background:C.white, borderRadius:18, border:"1px solid #e8ddd2", overflow:"hidden", boxShadow:"0 2px 12px rgba(0,0,0,0.05)" }}>
                 {[
                   { param:"Запись",           mira:"Сразу, без ожидания",      real:"Ждать 1–2 недели" },
@@ -811,11 +816,7 @@ export default function App() {
                   { param:"Осуждение",        mira:"Никогда",                   real:"Зависит от специалиста" },
                   { param:"Первый шаг",       mira:"20 сообщений бесплатно",     real:"Сразу платить" },
                 ]
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", background:"#f5ede4", padding:"0" }}>
-                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}></div>
-                  <div style={{ padding:"10px 16px", fontFamily:"'Lora',serif", fontSize:13, color:C.brown, fontWeight:600 }}>🌿 Мира</div>
-                  <div style={{ padding:"10px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.muted }}>Живой психолог</div>
-                </div>
+                
                   .map(function(row, i){ return (
                   <div key={row.param} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", borderBottom: i < 5 ? "1px solid #f0e8e0" : "none" }}>
                     <div style={{ padding:"13px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.muted, background:"#faf7f4", borderRight:"1px solid #f0e8e0", display:"flex", alignItems:"center" }}>{row.param}</div>
