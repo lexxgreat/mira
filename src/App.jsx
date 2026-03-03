@@ -412,7 +412,7 @@ export default function App() {
     if (paid && timerSec > 0) {
       timerRef.current = setInterval(function() {
         setTimerSec(function(s) {
-          if (s <= 1) { clearInterval(timerRef.current); setPaid(false); return 0; }
+          if (s <= 1) { clearInterval(timerRef.current); setPaid(false); setShowPaywall(true); return 0; }
           return s - 1;
         });
       }, 1000);
