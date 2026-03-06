@@ -165,11 +165,12 @@ function ProgressBar({ used, total, paid }) {
 function PaywallModal({ onClose, onPay, summary }) {
   var [waiting, setWaiting] = useState(false);
 
-  function handlePay() {
-    window.open(PAYMENT_URL, "_blank");
-    setWaiting(true);
-    setTimeout(function(){ onPay(); }, 30000);
-  }
+ function handlePay() {
+  ym(107186704, 'reachGoal', 'click_pay');
+  window.open(PAYMENT_URL, "_blank");
+  setWaiting(true);
+  setTimeout(function(){ onPay(); }, 30000);
+}
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(45,30,20,.55)", zIndex:300, backdropFilter:"blur(3px)" }}>
