@@ -207,7 +207,10 @@ function PaywallModal({ onClose, onPay, summary }) {
             </div>
           ) : (
             <button
-              onClick={handlePay}
+              onClick={function(){
+  ym(107186704, 'reachGoal', 'click_pay');
+  handlePay();
+}}
               style={{ background:C.brown, color:"#fff", border:"none", borderRadius:12, padding:"13px", fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", boxShadow:"0 4px 14px rgba(139,99,71,.35)", cursor:"pointer" }}
               onMouseEnter={function(e){ e.currentTarget.style.background = C.brownDark; }}
               onMouseLeave={function(e){ e.currentTarget.style.background = C.brown; }}
@@ -741,7 +744,7 @@ export default function App() {
                   </button>
                 ); })}
               </div>
-              <button onClick={startFromHome} disabled={!homeInput.trim()}
+              <button onClick={function(){ ym(107186704, 'reachGoal', 'start_chat'); startFromHome(); }} disabled={!homeInput.trim()}
                 style={{ width:"100%", background: homeInput.trim() ? C.brown : "#d4c4b0", color:"#fff", border:"none", borderRadius:12, padding:"13px", fontSize:15, fontWeight:600, transition:"background .2s", boxShadow: homeInput.trim() ? "0 4px 14px rgba(139,99,71,.25)" : "none" }}
                 onMouseEnter={function(e){ if (homeInput.trim()) e.currentTarget.style.background = C.brownDark; }}
                 onMouseLeave={function(e){ e.currentTarget.style.background = homeInput.trim() ? C.brown : "#d4c4b0"; }}>
@@ -838,7 +841,7 @@ export default function App() {
               <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"rgba(255,255,255,0.8)", marginBottom:20, lineHeight:1.6 }}>
                 {FREE_LIMIT} сообщений без регистрации и без карты.<br/>Платишь только если сам захочешь продолжить.
               </p>
-              <button onClick={function(){ newSess(); }}
+              <button onClick={function(){ ym(107186704, 'reachGoal', 'start_chat'); newSess(); }}
                 style={{ background:"#fff", color:C.brownDark, border:"none", borderRadius:12, padding:"13px 32px", fontSize:15, fontWeight:600, boxShadow:"0 4px 20px rgba(0,0,0,0.15)", cursor:"pointer" }}
                 onMouseEnter={function(e){ e.currentTarget.style.background = "#fdf5ee"; }}
                 onMouseLeave={function(e){ e.currentTarget.style.background = "#fff"; }}>
